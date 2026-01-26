@@ -1,0 +1,12 @@
+# Local/private config
+local.properties
+
+# Gradle/IDE/build outputs
+.gradle/
+.idea/
+**/build/
+*.iml
+
+# Keystores
+*.jks
+*.keystore
