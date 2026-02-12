@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -32,6 +33,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 class MainActivity : ComponentActivity() {
   private val viewModel: HistoryViewModel by viewModels()
@@ -60,6 +63,16 @@ class MainActivity : ComponentActivity() {
   }
 }
 
+fun extractUrlsAndroid(text: String): List<String> {
+  val urls = mutableListOf<String>()
+  val matcher = Patterns.WEB_URL.matcher(text)
+
+  while (matcher.find()) {
+    urls.add(matcher.group())
+  }
+  return urls
+}
+
 @Composable
 fun MainScreen(
   sharedText: String?,
@@ -74,13 +87,15 @@ fun MainScreen(
   val historyList by viewModel.allHistory.collectAsState(initial = emptyList())
 
   if (sharedText != null) {
-    LaunchedEffect(sharedText) {
-      if (!isValidUrl(sharedText)) {
+    val url = extractUrlsAndroid(sharedText).firstOrNull()
+
+    LaunchedEffect(url) {
+      if (!isValidUrl(url)) {
         status = "Invalid URL"
         isLoading = false
         return@LaunchedEffect
       }
-      val result = shortenUrl(sharedText)
+      val result = shortenUrl(url)
       if (result != null) {
         resultUrl = result
         status = "Short URL created!"
@@ -226,8 +241,13 @@ fun extractUrl(body: String): String? {
   }
 }
 
-fun isValidUrl(url: String): Boolean {
-  return (url.startsWith("http://") || url.startsWith("https://")) && url.length > 7
+@OptIn(ExperimentalContracts::class)
+fun isValidUrl(url: String?): Boolean {
+  contract {
+    returns(true) implies (url != null)
+  }
+  @Suppress("HttpUrlsUsage")
+  return url != null && (url.startsWith("http://") || url.startsWith("https://")) && url.length > 7
 }
 
 suspend fun shortenUrl(longUrl: String): String? = withContext(Dispatchers.IO) {
